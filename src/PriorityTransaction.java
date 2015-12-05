@@ -12,8 +12,10 @@ public class PriorityTransaction extends Transaction {
     //the status of current transaction
     private final AtomicReference<Status> status;
 
-    public PriorityTransaction() {
+    public PriorityTransaction(int n) {
+
         status = new AtomicReference<Status>(Status.ACTIVE);
+
     }
 
     static ThreadLocal<PriorityTransaction> local = new ThreadLocal<PriorityTransaction>() {

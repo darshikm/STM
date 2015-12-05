@@ -1,5 +1,8 @@
 package STM.DataStructure;
 
+import STM.Exceptions.AbortedException;
+import STM.Exceptions.PanicException;
+
 import java.util.HashMap;
 import java.util.logging.Logger;
 
@@ -8,23 +11,23 @@ public class TLinkedList<T> {
 	private TNode<T> head, tail;
 	private static Logger LOGGER = Logger.getLogger(TLinkedList.class.getName());
 	
-	public TLinkedList (T min, T max) {
+	public TLinkedList (T min, T max) throws AbortedException, PanicException {
 		head = new TNode<>(min);
 		tail = new TNode<>(max);
 		head.setNext(tail);
 		tail.setPrev(head);
 	}
 	
-	public void add(T value) {
+	public void add(T value) throws AbortedException, PanicException {
 		Node<T> temp = new TNode<>(value), last;
 		last = tail.getPrev();
 		last.setNext(temp);
 		temp.setPrev(last);
 		tail.setPrev(temp);
 		temp.setNext(tail);
-	}
+    }
 	
-	public boolean remove(T value) {
+	public boolean remove (T value) throws AbortedException, PanicException  {
 		Node<T> last = head.getNext();
 		boolean found = false;
 
@@ -49,7 +52,7 @@ public class TLinkedList<T> {
 		return found;
 	}
 
-	public void printAll() {
+	public void printAll() throws AbortedException, PanicException {
 		Node<T> runner = head;
         LOGGER.info("Making Thread.." + Thread.currentThread().getName() +
         "; print the LinkedList contents");

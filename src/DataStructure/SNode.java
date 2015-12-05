@@ -1,6 +1,8 @@
 package STM.DataStructure;
 
 import STM.Atomic.Copyable;
+import STM.Exceptions.AbortedException;
+import STM.Exceptions.PanicException;
 
 import java.util.concurrent.atomic.AtomicReference;
 

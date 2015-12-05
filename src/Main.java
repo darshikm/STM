@@ -14,21 +14,21 @@ import java.util.logging.Logger;
 /* STM basic test */
 
 public class Main {
-	
-	public static TLinkedList<Integer> linkedList = new TLinkedList<>(Integer.MIN_VALUE, Integer.MAX_VALUE);
+
+	public static  TLinkedList<Integer> linkedList;
+	private static Integer NUM_THREADS = 50;
+	public static void init_linkedList () throws Exception {
+		linkedList = new TLinkedList<>(Integer.MIN_VALUE, Integer.MAX_VALUE);
+	}
 	private static Logger LOGGER = Logger.getLogger(Main.class.getName());
 
 	public static class Produce<T> implements Callable<T> {
 		private T value;
-		
 		public Produce(T value) {
-			//LOGGER.info("Adding DataStructure.Node with value : " + value);
 			this.value = value;
 		}
-
 		@Override
 		public T call() throws Exception {
-			//LOGGER.info("Calling Produce Callable: " + value);
 			linkedList.add((Integer) value);
 			return null;
 		}
@@ -45,11 +45,9 @@ public class Main {
 
 	public static class Consume<T> implements Callable<T> {
 		private T value;
-
 		public Consume(T value) {
 			this.value = value;
 		}
-
 		@Override
 		public T call() throws Exception {
 			linkedList.remove((Integer) value);
@@ -58,51 +56,17 @@ public class Main {
 	}
 
     public static void main(String[] args) throws Exception {
-		ExecutorService executor = Executors.newFixedThreadPool(4);
-        //Random random = new Random();
-
-		//TThread t1, t2, t3, t4;
-		executor.execute(new WorkerThread(new Produce<>(5), "THREAD1"));
-		executor.execute(new WorkerThread(new Produce<>(8), "THREAD2"));
-		//executor.execute(new WorkerThread(new PrintAll<Integer>(), "THREAD3"));
-		executor.execute(new WorkerThread(new Consume<>(5), "THREAD4"));
-		executor.execute(new WorkerThread(new Produce<>(12), "THREAD3"));
-		executor.execute(new WorkerThread(new Produce<>(1), "THREAD5"));
-		executor.execute(new WorkerThread(new Produce<>(152)));
-		executor.execute(new WorkerThread(new Produce<>(62)));
-		executor.execute(new WorkerThread(new Produce<>(52)));
-		executor.execute(new WorkerThread(new Produce<>(11)));
-		executor.execute(new WorkerThread(new Produce<>(33), "THREAD7"));
-		//executor.execute(new WorkerThread(new PrintAll<Integer>()));
-
-		executor.shutdown();
-		//linkedList.printAll();
-		while (true) {
-			if(executor.isShutdown()) {
-				break;
+		Main.init_linkedList();
+		ExecutorService executor = Executors.newFixedThreadPool(8);
+		Random random = new Random();
+		for (int i=0; i<NUM_THREADS; i++) {
+			int inserted = random.nextInt(i+1);
+			executor.execute(new WorkerThread(new Produce<>(inserted), "thread" + i));
+			if (i > 5) {
+				executor.execute(new WorkerThread(new Consume<>(i-3)));
 			}
 		}
-		if(executor.isShutdown()) { linkedList.printAll(); }
-
-
-		/*
-		t1 = new TThread();
-		t1.setName("THRD1");
-
-		t2 = new TThread();
-		t2.setName("THRD2");
-
-		t1.doIt(new Produce<>(5));
-		t2.doIt(new Produce<>(8));
-
-		t3 = new TThread();
-		t3.setName("THRD3");
-		t3.doIt(new PrintAll<>());
-
-		t4 = new TThread();
-		t4.setName("THRD4");
-		t4.doIt(new Consume<>(5));
-		*/
+		executor.shutdown();
     }
 
 	public static class WorkerThread implements Runnable {
