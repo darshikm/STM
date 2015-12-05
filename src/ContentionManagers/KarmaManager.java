@@ -13,9 +13,11 @@ public class KarmaManager extends ContentionManager {
 
     @Override
     public void resolve(Transaction me, Transaction other) {
+        /*
         LOGGER.info("Me: " + me.getFinished() + ", " + other.getFinished());
         if (me.getFinished() < other.getFinished())
             me.abort();
         else other.abort();
+        */
     }
 }

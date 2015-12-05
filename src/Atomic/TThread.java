@@ -3,6 +3,7 @@ package STM.Atomic;
 import STM.ContentionManagers.*;
 import STM.Exceptions.AbortedException;
 import STM.Exceptions.PanicException;
+import STM.PriorityTransaction;
 import STM.Transaction;
 import STM.VersionClock;
 
@@ -20,29 +21,39 @@ public class TThread extends Thread {
 
 	public <T> T doIt(Callable<T> xaction) throws Exception {
 		T result = null;
-		LOGGER.info("Do it function called");
+		//LOGGER.info("Do it function called");
 		while (true) {
-			Transaction me = new Transaction();
-			Transaction.setLocal(me);
-			ContentionManager.setLocal(new PoliteManager());
+			PriorityTransaction me = new PriorityTransaction();
+			PriorityTransaction.setLocal(me);
+			ContentionManager.setLocal(new PriorityBasedManager());
+
 			try {
 				result = xaction.call();
-				LOGGER.info("XACTION call is made");
-			} catch (AbortedException e) {
-			} catch (Exception e) {
+				//LOGGER.info("XACTION call is made");
+			}
+			catch (AbortedException e) {
+				LOGGER.info("The transaction of thread.." + Thread.currentThread().getName() + "was aborted by CM.");
+				me.abort();
+				onAbort.run();
+				continue;
+			}
+			catch (Exception e) {
 				throw new PanicException(e);
 			}
 			if (onValidate.call()) {
-				LOGGER.info("OnValidate function ");
+				LOGGER.info("Validate call is successful by thread.." + Thread.currentThread().getName());
 				if (me.commit()) {
 					onCommit.run();
-					LOGGER.info("COMMITTED successful" );
+					LOGGER.info("COMMIT successful" );
 					return result;
+				}
+				else {
+					LOGGER.info("Transaction COMMIT failed"); //CAS
 				}
 			}
 			me.abort();
 			onAbort.run();
-			LOGGER.info("Transaction ABORTED");
+			LOGGER.info("Transaction ABORTED by calling onAbort after onValidate unsuccessful");
 		}
 	}
 
@@ -64,19 +75,27 @@ public class TThread extends Thread {
 				ReadSet readSet = ReadSet.getLocal();
 				VersionClock.setWriteStamp();
 				long writeVersion = VersionClock.getWriteStamp();
+				//set the timestamp of transaction
+
 				for (Map.Entry<LockObject<?>,Object> entry : writeSet.getList()) {
 					LockObject<?> key = entry.getKey();
-					Copyable<?> destination = key.openRead();
+					Copyable<?> destination = null;
+					try {
+						destination = key.openRead();
+					}
+					catch (AbortedException | PanicException e) {
+						e.printStackTrace();
+					}
 					Copyable<Copyable<?>> source = (Copyable<Copyable<?>>) entry.getValue();
 					source.copyTo(destination);
-					LOGGER.info("WRTING OBJECT VALUE");
+					LOGGER.info("Updating the write during the commit");
 					key.stamp = writeVersion;
-					Transaction.getLocal().incrementFinished();
 				}
 				writeSet.unlock();
 				writeSet.clear();
 				readSet.clear();
-			} catch (AbortedException | PanicException e) {
+			}
+			catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
@@ -93,13 +112,19 @@ public class TThread extends Thread {
 			}
 			for (LockObject<?> x : readSet.getList()) {
 				if (x.lock.isLocked() && !x.lock.isHeldByCurrentThread()) {
-					LOGGER.info("Object locked and held, ContentionManagers.ContentionManager called");
-					/*ContentionManager.getLocal().resolve(Transaction.getLocal(), x.locker);
-					Thread.yield();*/
+					LOGGER.info("Object locked and held by somebody else!");
+					/*
+					try {
+						ContentionManager.getLocal().resolve(Transaction.getLocal(), x.locker);
+					}
+					catch (AbortedException e) {
+						return false;
+					}
+					*/
 					return false;
 				}
 				if (x.stamp > VersionClock.getReadStamp()) {
-					LOGGER.info("Stamp > Version CLOCK");
+					LOGGER.info("OOPS error: Stamp > Version CLOCK");
 					return false;
 				}
 			}

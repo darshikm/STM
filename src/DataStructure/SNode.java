@@ -9,14 +9,15 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class SNode<T> implements Node<T>, Copyable<SNode<T>> {
 
-    AtomicReference<Node<T>> next;
+    Node<T> next, prev;
     T item;
 
     public SNode(){};
 
     public SNode(T myItem) {
         item = myItem;
-        next = new AtomicReference<>(null);
+        next = null;
+        prev = null;
     }
 
     @Override
@@ -31,17 +32,28 @@ public class SNode<T> implements Node<T>, Copyable<SNode<T>> {
 
     @Override
     public Node<T> getNext() {
-        return next.get();
+        return next;
+    }
+
+    @Override
+    public Node<T> getPrev() {
+        return prev;
     }
 
     @Override
     public void setNext(Node<T> value) {
-        next.set(value);
+        next = (value);
+    }
+
+    @Override
+    public void setPrev(Node<T> value) {
+        prev = (value);
     }
 
     @Override
     public void copyTo(SNode<T> target) {
-        target.next = next;
         target.item = item;
+        target.next = next;
+        target.prev = prev;
     }
 }

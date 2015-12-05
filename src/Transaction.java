@@ -4,19 +4,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Transaction {
-	
 	public enum Status {ABORTED, ACTIVE, COMMITTED};
-	//public static Transaction COMMITTED = new Transaction(Status.COMMITTED);
+
 	private final AtomicReference<Status> status;
-	private AtomicInteger finished = new AtomicInteger(0);
+
+	//time stamp when the transaction is created.
+	protected volatile long t_stamp;
+
 	static ThreadLocal<Transaction> local = new ThreadLocal<Transaction>() {
 		protected Transaction initialValue() {
 			return new Transaction(Status.COMMITTED);
 		}
 	};
 
-	public long timestampStart = VersionClock.getGlobalStamp();
-	
 	public Transaction() {
 		status = new AtomicReference<Status>(Status.ACTIVE);
 	}
@@ -45,12 +45,5 @@ public class Transaction {
 		local.set(transaction);
 	}
 
-	public Integer getFinished() {
-		return finished.get();
-	}
-
-	public void incrementFinished() {
-		finished.getAndIncrement();
-	}
-
+	public long getTransactionStamp() { return this.t_stamp; }
 }

@@ -1,6 +1,7 @@
 package STM.Atomic;
 
 import STM.ContentionManagers.ContentionManager;
+import STM.Exceptions.AbortedException;
 import STM.Transaction;
 
 import java.util.HashMap;
@@ -33,8 +34,12 @@ public class WriteSet {
 	public boolean tryLock(long timeout, TimeUnit timeUnit) {
 		for (LockObject<?> x : map.get().keySet()) {
 			while (!x.tryLock(timeout, timeUnit)) {
-				ContentionManager.getLocal().resolve(Transaction.getLocal(), x.locker);
-				Thread.yield();
+				try {
+					ContentionManager.getLocal().resolve(Transaction.getLocal(), x.locker);
+				}
+				catch (AbortedException e) {
+					return true;
+				}
 			}
 		}
 		return true;

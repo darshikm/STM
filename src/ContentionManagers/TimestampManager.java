@@ -13,9 +13,9 @@ public class TimestampManager extends ContentionManager {
 
     @Override
     public void resolve(Transaction me, Transaction other) {
-        LOGGER.info("Me Start: " + me.timestampStart + ", Other Start: " + other.timestampStart);
-        if (me.timestampStart < other.timestampStart) {
-            LOGGER.info("Me: " + me.timestampStart + " < Other: " + other.timestampStart);
+        LOGGER.info("Me Start: " + me.getTransactionStamp() + ", Other Start: " + other.getTransactionStamp());
+        if (me.getTransactionStamp() < other.getTransactionStamp()) {
+            LOGGER.info("Me: " + me.getTransactionStamp() + " < Other: " + other.getTransactionStamp());
             me.abort();
         }
         else other.abort();

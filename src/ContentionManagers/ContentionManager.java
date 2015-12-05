@@ -1,5 +1,6 @@
 package STM.ContentionManagers;
 
+import STM.Exceptions.AbortedException;
 import STM.Transaction;
 
 public abstract class ContentionManager {
@@ -8,7 +9,6 @@ public abstract class ContentionManager {
 		protected ContentionManager initialValue() {
 			ContentionManager manager = null;
 			try {
-				//TODO
 				manager = ContentionManager.class.newInstance();
 			} catch (InstantiationException e) {
 				e.printStackTrace();
@@ -19,7 +19,7 @@ public abstract class ContentionManager {
 		}
 	};
 	
-	public abstract void resolve(Transaction me, Transaction other);
+	public abstract void resolve(Transaction me, Transaction other) throws AbortedException;
 	
 	public static ContentionManager getLocal() {
 		return local.get();

@@ -3,12 +3,12 @@ package STM.DataStructure;
 import STM.Atomic.AtomicObject;
 import STM.Atomic.LockObject;
 import STM.Exceptions.AbortedException;
+import org.omg.CORBA.NO_IMPLEMENT;
 
-/**
- * Created by Mukhtar on 11/3/2015.
- */
+import java.util.logging.Logger;
+
 public class TNode<T> implements Node<T> {
-
+    private static Logger LOGGER = Logger.getLogger(TLinkedList.class.getName());
     AtomicObject<SNode<T>> atomic;
     
     public TNode(T myItem) {
@@ -32,6 +32,8 @@ public class TNode<T> implements Node<T> {
     public void setItem(T value) {
         try {
             atomic.openWrite().setItem(value);
+            if (!atomic.validate())
+                throw new AbortedException();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -45,6 +47,20 @@ public class TNode<T> implements Node<T> {
             if (!atomic.validate())
                 throw new AbortedException();
         } catch (Exception e) {
+            LOGGER.info("getNext open read threw an exception");
+            e.printStackTrace();
+        }
+        return retNode;
+    }
+
+    @Override
+    public Node<T> getPrev() {
+        Node<T> retNode = null;
+        try {
+            retNode = atomic.openRead().getPrev();
+            if (!atomic.validate())
+                throw new AbortedException();
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return retNode;
@@ -55,6 +71,19 @@ public class TNode<T> implements Node<T> {
     public void setNext(Node<T> value) {
         try {
             atomic.openWrite().setNext(value);
+            if (!atomic.validate())
+                throw new AbortedException();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void setPrev(Node<T> value) {
+        try {
+            atomic.openWrite().setPrev(value);
+            if (!atomic.validate())
+                throw new AbortedException();
         } catch (Exception e) {
             e.printStackTrace();
         }

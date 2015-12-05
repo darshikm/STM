@@ -5,49 +5,57 @@ import java.util.logging.Logger;
 
 public class TLinkedList<T> {
 	
-	private Node<T> head;
-	public HashMap<T, Node<T>> nodeMap;
+	private TNode<T> head, tail;
 	private static Logger LOGGER = Logger.getLogger(TLinkedList.class.getName());
 	
-	public TLinkedList () {
-		head = new TNode<>(null);
-		nodeMap = new HashMap<>();
+	public TLinkedList (T min, T max) {
+		head = new TNode<>(min);
+		tail = new TNode<>(max);
+		head.setNext(tail);
+		tail.setPrev(head);
 	}
 	
 	public void add(T value) {
-		Node<T> temp = new TNode<>(value);
-		nodeMap.put(value, temp);
-		if (head.getNext() == null)
-			head.setNext(temp);
-		else {
-			Node<T> runner = head;
-			while (runner.getNext() != null)
-				runner = runner.getNext();
-			runner.setNext(temp);
-		}
+		Node<T> temp = new TNode<>(value), last;
+		last = tail.getPrev();
+		last.setNext(temp);
+		temp.setPrev(last);
+		tail.setPrev(temp);
+		temp.setNext(tail);
 	}
 	
 	public boolean remove(T value) {
-		if (head.getNext() == null)
-			return false;
-		Node<T> runner = head;
-		while (runner.getNext() != null) {
-			LOGGER.severe("inside RUNNER*****************************************************: " + runner.getItem());
-			if (runner.getNext().getItem() == value) {
-				runner.getNext().setNext(runner.getNext().getNext());
-				return true;
+		Node<T> last = head.getNext();
+		boolean found = false;
+
+		while (last != tail) {
+			if(last.getItem() == value) {
+				found = true;
+				break;
 			}
-			runner = runner.getNext();
+			else {
+                LOGGER.info("Node item := " + last.getItem());
+                last = last.getNext();
+            }
 		}
-		return false;
+
+		if(found) {
+			Node<T> temp = last.getPrev();
+			temp.setNext(last.getNext());
+			last.getNext().setPrev(temp);
+			LOGGER.severe("Found the node to be deleted!");
+		}
+		else LOGGER.severe("Could not find the node!");
+		return found;
 	}
 
 	public void printAll() {
-		LOGGER.info("NOW PRINTING.......................................!!!!!!!");
 		Node<T> runner = head;
-		while (runner.getNext() != null) {
-			System.out.print(runner.getItem() + ",");
+        LOGGER.info("Making Thread.." + Thread.currentThread().getName() +
+        "; print the LinkedList contents");
+		while (runner.getNext() != tail) {
 			runner = runner.getNext();
+			LOGGER.info(runner.getItem() + " -> ");
 		}
 	}
 }

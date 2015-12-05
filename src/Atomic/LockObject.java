@@ -6,25 +6,24 @@ import STM.Exceptions.PanicException;
 import STM.Transaction;
 import STM.VersionClock;
 
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
-/**
- * Created by Mukhtar on 11/3/2015.
- */
 public class LockObject<T extends Copyable<T>> extends AtomicObject<T> {
 	
 	protected ReentrantLock lock;
 	protected volatile long stamp;
 	private volatile T version;
-	protected Transaction locker;
+	protected Transaction locker, creator;
 	private static Logger LOGGER = Logger.getLogger(LockObject.class.getName());
 
     public LockObject(T init) {
         super(init);
 		version = internalInit;
 		lock = new ReentrantLock();
+		creator = Transaction.getLocal();
     }
 
     @SuppressWarnings("unchecked")
@@ -33,23 +32,28 @@ public class LockObject<T extends Copyable<T>> extends AtomicObject<T> {
         ReadSet readSet = ReadSet.getLocal();
         switch(Transaction.getLocal().getStatus()) {
         case COMMITTED:
-			LOGGER.info("In Open Read COMMITTED");
+			LOGGER.warning("OPENREAD: Return version from the recently committed transaction by thread.. "
+					+ Thread.currentThread().getName());
         	return version;
         case ACTIVE:
-			LOGGER.info("In Open Read ACTIVE");
-        	WriteSet writeSet = WriteSet.getLocal();
+			WriteSet writeSet = WriteSet.getLocal();
         	if (writeSet.get(this) == null) {
-        		if (lock.isLocked()) {
-					ContentionManager.getLocal().resolve(Transaction.getLocal(), locker);
-					Thread.yield();
-					//Transaction.getLocal().abort();
+        		while (lock.isLocked()) {
+					try {
+						ContentionManager.getLocal().resolve(Transaction.getLocal(), locker);
+					}
+					catch (AbortedException e) {
+						Thread.yield();
+					}
         		}
         		readSet.add(this);
-				LOGGER.info("In Open Read ACTIVE with value: " + version.toString());
+				LOGGER.info("Adding a new copy of SNode with value: " + version.toString()
+				+ "in the ReadSet of Thread.." + Thread.currentThread().getName());
         		return version;
         	}
         	else {
-				LOGGER.info("In Open Read ACTIVE with ELSE condition: " + writeSet.get(this).toString());
+				LOGGER.info("Obtaining the version of SNode with value: " + version.toString()
+						+ "from the WriteSet of Thread.." + Thread.currentThread().getName());
         		return (T) writeSet.get(this);
         	}
         case ABORTED:
@@ -65,20 +69,24 @@ public class LockObject<T extends Copyable<T>> extends AtomicObject<T> {
     public T openWrite() throws AbortedException, PanicException {
     	switch(Transaction.getLocal().getStatus()) {
     	case COMMITTED:
-			LOGGER.info("In Open Write COMMITTED");
+			LOGGER.warning("OPENWRITE: Return version from the recently committed transaction by thread.. "
+					+ Thread.currentThread().getName());
     		return version;
     	case ACTIVE:
-			LOGGER.info("In Open Write ACTIVE");
-    		WriteSet writeSet = WriteSet.getLocal();
+			WriteSet writeSet = WriteSet.getLocal();
     		T scratch = (T) writeSet.get(this);
     		if (scratch == null) {
-    			if (lock.isLocked()) {
-					ContentionManager.getLocal().resolve(Transaction.getLocal(), locker);
-					Thread.yield();
-					//Transaction.getLocal().abort();
+				while (lock.isLocked()) {
+					try {
+						ContentionManager.getLocal().resolve(Transaction.getLocal(), locker);
+					}
+					catch (AbortedException e) {
+						Thread.yield();
+					}
 				}
 				try {
-					LOGGER.info("NEW INSTANCE!!!!!!!");
+					LOGGER.info("Creating a new instance copy in the WriteSet of thread.." +
+					Thread.currentThread().getName());
 					scratch = (T) internalClass.newInstance();
 					version.copyTo(scratch);
 					writeSet.put(this, scratch);
@@ -97,8 +105,7 @@ public class LockObject<T extends Copyable<T>> extends AtomicObject<T> {
 
     @Override
     public boolean validate() {
-    	Transaction.Status status = Transaction.getLocal().getStatus();
-    	switch(status) {
+    	switch(Transaction.getLocal().getStatus()) {
     	case COMMITTED:
     		return true;
     	case ACTIVE:
@@ -122,12 +129,11 @@ public class LockObject<T extends Copyable<T>> extends AtomicObject<T> {
 	}
 	
 	public boolean tryLock(long timeout, TimeUnit timeUnit) {
-		//TODO Definition of lock
 		boolean retValue = false;
 		try {
 			retValue = lock.tryLock(timeout, timeUnit);
 			if (retValue)
-				locker = Transaction.getLocal();
+				locker = Transaction.getLocal(); //update the LockObject with the Transaction which holds the lock
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
